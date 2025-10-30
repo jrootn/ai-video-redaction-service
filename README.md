@@ -1,26 +1,34 @@
-# AI Video Redaction Service
+# AI Video Redaction Service (MediaPipe Detector Branch)
 
-This project is the first part of a larger AI Video Redaction Service. This component, the `detector-service`, is a stateless, container-ready Python application designed to perform high-performance face tracking on video files.
+This branch contains a version of the `detector-service` that uses the **MediaPipe Face Detector**. This component is a stateless, container-ready Python application designed to perform face detection on video files and output structured metadata.
 
-## Project Intent
-
-The primary goal of this service is to analyze a video and produce structured metadata that identifies the location of all faces in every frame. This metadata can then be used by other services to perform actions like blurring or redacting faces.
-
-This service is designed with MLOps best practices in mind, ensuring that it is efficient, scalable, and ready for deployment in a cloud-native environment like Google Kubernetes Engine (GKE).
+**Note:** This implementation has known limitations and is preserved for archival and comparison purposes. For a more accurate and robust solution, please refer to the main branch, which will feature a YOLO-based detector.
 
 ## How it Works
 
 The application processes a video file frame by frame, using the MediaPipe `FaceDetector` to identify faces. For each detected face, it records the frame number, a unique tracking ID, and the bounding box coordinates.
 
-### "Resize-Detect-Scale" Optimization
+To improve the detection of small faces, this implementation uses a **tiling strategy**. Each frame is broken down into smaller, overlapping tiles, and detection is run on each tile. The results are then merged using Non-Maximum Suppression.
 
-To ensure high performance and reduce computational cost, this service implements a "Resize-Detect-Scale" optimization:
+## Known Limitations
 
-1.  **Resize:** Each frame is resized to a smaller, standard resolution (1280x720).
-2.  **Detect:** Face detection is performed on the smaller, resized frame.
-3.  **Scale:** The resulting bounding box coordinates are scaled back up to match the original frame's resolution.
+The MediaPipe Face Detector, even with the tiling strategy, has significant limitations in detecting faces that are:
 
-This approach significantly reduces the processing load, making the service faster and more cost-effective, especially when dealing with high-resolution videos.
+*   **Small or distant** from the camera.
+*   **Partially occluded** (e.g., covered by a hand or object).
+*   **In poor lighting** or unusual angles.
+
+This can result in both missed faces (false negatives) and incorrect detections of other objects as faces (false positives).
+
+### Examples of Poor Detection
+
+The following images from the test video demonstrate the limitations of this model. Notice the incorrect detection of a neck/chin as a separate face.
+
+**Image: `frame_0263.jpg`**
+![Example of a false positive detection](output/frames_low_confidence/frame_0263.jpg)
+
+**Image: `frame_0200.jpg`**
+![Example of a false positive detection](output/frames_low_confidence/frame_0200.jpg)
 
 ## Running Locally
 
@@ -38,9 +46,10 @@ To run the `detector-service` locally, follow these steps:
 
 This will process the sample video in the `tests` directory and output the following to the `output` directory:
 
-*   `metadata.json`: A Parquet file containing the structured metadata for all detected faces.
+*   `metadata.parquet`: A Parquet file containing the structured metadata for all detected faces.
 *   `thumbnails/`: A directory containing a thumbnail image for each unique face detected.
-*   `video_with_detections.mp4`: A video with the detected faces highlighted with bounding boxes.
+
+You can adjust the sensitivity of the detector by editing the `MIN_DETECTION_CONFIDENCE` environment variable in the `run_local.sh` script.
 
 ## Project Structure
 
@@ -54,11 +63,3 @@ This will process the sample video in the `tests` directory and output the follo
 │   └── process.py
 └── tests
     └── sample_video.mp4
-```
-
-*   **`Dockerfile`**: Defines the container image for the application.
-*   **`README.md`**: This file.
-*   **`requirements.txt`**: A list of the Python dependencies required to run the service.
-*   **`run_local.sh`**: A script to run the service locally.
-*   **`src/process.py`**: The main application logic.
-*   **`tests/sample_video.mp4`**: A sample video for testing the service.

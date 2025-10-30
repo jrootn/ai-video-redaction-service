@@ -1,14 +1,48 @@
 import os
 import cv2
-import mediapipe as mp
-import numpy as np
-import json
 import pandas as pd
 import hashlib
+import numpy as np
+from blur_app.detection import detect_objects
+
+def non_max_suppression(boxes, scores, threshold):
+    """
+    Applies Non-Maximum Suppression to filter overlapping bounding boxes.
+    """
+    if len(boxes) == 0:
+        return []
+
+    # Convert boxes to (x1, y1, x2, y2) format
+    x1 = boxes[:, 0]
+    y1 = boxes[:, 1]
+    x2 = boxes[:, 2]
+    y2 = boxes[:, 3]
+
+    areas = (x2 - x1 + 1) * (y2 - y1 + 1)
+    order = scores.argsort()[::-1]
+
+    keep = []
+    while order.size > 0:
+        i = order[0]
+        keep.append(i)
+        xx1 = np.maximum(x1[i], x1[order[1:]])
+        yy1 = np.maximum(y1[i], y1[order[1:]])
+        xx2 = np.minimum(x2[i], x2[order[1:]])
+        yy2 = np.minimum(y2[i], y2[order[1:]])
+
+        w = np.maximum(0.0, xx2 - xx1 + 1)
+        h = np.maximum(0.0, yy2 - yy1 + 1)
+        inter = w * h
+        ovr = inter / (areas[i] + areas[order[1:]] - inter)
+
+        inds = np.where(ovr <= threshold)[0]
+        order = order[inds + 1]
+
+    return keep
 
 def process_video():
     """
-    Main function to process the video, detect faces, and extract metadata.
+    Main function to process the video, detect faces using a tiling strategy, and extract metadata.
     """
     # Get configuration from environment variables
     input_video_path = os.environ.get("INPUT_VIDEO_PATH")
@@ -21,91 +55,91 @@ def process_video():
         print("Error: Missing one or more environment variables.")
         return
 
-    # Ensure output directory for thumbnails exists
     os.makedirs(output_thumbnail_dir, exist_ok=True)
 
-    # Initialize MediaPipe FaceLandmarker
-    BaseOptions = mp.tasks.BaseOptions
-    FaceLandmarker = mp.tasks.vision.FaceLandmarker
-    FaceLandmarkerOptions = mp.tasks.vision.FaceLandmarkerOptions
-    VisionRunningMode = mp.tasks.vision.RunningMode
+    cap = cv2.VideoCapture(input_video_path)
+    if not cap.isOpened():
+        print(f"Error: Could not open video file: {input_video_path}")
+        return
 
-    options = FaceLandmarkerOptions(
-        base_options=BaseOptions(model_asset_path='models/face_landmarker.task'),
-        running_mode=VisionRunningMode.VIDEO,
-        output_face_blendshapes=True,
-        output_facial_transformation_matrixes=True,
-        num_faces=10,
-    )
+    frame_number = 0
+    all_detections = []
+    saved_tracking_ids = set()
 
-    with FaceLandmarker.create_from_options(options) as landmarker:
-        # Open the video file
-        cap = cv2.VideoCapture(input_video_path)
-        if not cap.isOpened():
-            print(f"Error: Could not open video file: {input_video_path}")
-            return
+    # Tiling parameters
+    tile_size = 640
+    overlap = 540
 
-        frame_number = 0
-        all_detections = []
-        saved_tracking_ids = set()
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
 
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
+        frame_height, frame_width, _ = frame.shape
+        frame_boxes = []
+        frame_scores = []
 
-            # Resize-Detect-Scale Optimization
-            original_height, original_width, _ = frame.shape
-            resized_frame = cv2.resize(frame, (1280, 720))
-            
-            # Convert the frame to RGB
-            rgb_frame = cv2.cvtColor(resized_frame, cv2.COLOR_BGR2RGB)
-            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
+        # Create overlapping tiles
+        for y in range(0, frame_height, tile_size - overlap):
+            for x in range(0, frame_width, tile_size - overlap):
+                tile = frame[y:min(y + tile_size, frame_height), x:min(x + tile_size, frame_width)]
+                
+                if tile.shape[0] == 0 or tile.shape[1] == 0:
+                    continue
 
-            # Perform face landmarking on the resized frame
-            face_landmarker_result = landmarker.detect_for_video(mp_image, frame_number)
+                # Detect objects in the tile
+                detected_in_tile = detect_objects(tile)
 
-            if face_landmarker_result.face_landmarks:
-                for face_landmarks in face_landmarker_result.face_landmarks:
-                    # This is a simplified bounding box calculation
-                    x_min = min([lm.x for lm in face_landmarks])
-                    y_min = min([lm.y for lm in face_landmarks])
-                    x_max = max([lm.x for lm in face_landmarks])
-                    y_max = max([lm.y for lm in face_landmarks])
+                for box in detected_in_tile:
+                    x_min, y_min, x_max, y_max, confidence, _ = box
+                    # Convert tile coordinates to frame coordinates
+                    global_x_min = x + x_min
+                    global_y_min = y + y_min
+                    global_x_max = x + x_max
+                    global_y_max = y + y_max
+                    
+                    frame_boxes.append([global_x_min, global_y_min, global_x_max, global_y_max])
+                    frame_scores.append(confidence)
 
-                    # Scale bounding box back to original frame size
-                    scaled_x_min = int(x_min * original_width)
-                    scaled_y_min = int(y_min * original_height)
-                    scaled_x_max = int(x_max * original_width)
-                    scaled_y_max = int(y_max * original_height)
+        # Apply Non-Maximum Suppression to the detections for the current frame
+        if frame_boxes:
+            boxes_np = np.array(frame_boxes)
+            scores_np = np.array(frame_scores)
+            keep_indices = non_max_suppression(boxes_np, scores_np, threshold=0.4)
+            final_boxes = boxes_np[keep_indices]
 
-                    # Create a simple hash of the landmarks to serve as a tracking ID
-                    landmarks_str = "".join([f"{lm.x}{lm.y}{lm.z}" for lm in face_landmarks])
-                    tracking_id = hashlib.sha256(landmarks_str.encode()).hexdigest()[:8]
+            for box in final_boxes:
+                x_min, y_min, x_max, y_max = box
 
+                box_str = f"{frame_number}{x_min}{y_min}{x_max}{y_max}"
+                tracking_id = hashlib.sha256(box_str.encode()).hexdigest()[:8]
 
-                    all_detections.append({
-                        "frame_number": frame_number,
-                        "tracking_id": tracking_id,
-                        "bbox": [scaled_x_min, scaled_y_min, scaled_x_max, scaled_y_max]
-                    })
+                all_detections.append({
+                    "frame_number": frame_number,
+                    "tracking_id": tracking_id,
+                    "bbox": [x_min, y_min, x_max, y_max]
+                })
 
-                    # Save thumbnail for new tracking IDs
-                    if tracking_id not in saved_tracking_ids:
-                        thumbnail = frame[scaled_y_min:scaled_y_max, scaled_x_min:scaled_x_max]
+                if tracking_id not in saved_tracking_ids:
+                    safe_x_min = max(0, x_min)
+                    safe_y_min = max(0, y_min)
+                    safe_x_max = min(frame_width, x_max)
+                    safe_y_max = min(frame_height, y_max)
+
+                    if safe_y_max > safe_y_min and safe_x_max > safe_x_min:
+                        thumbnail = frame[safe_y_min:safe_y_max, safe_x_min:safe_x_max]
                         thumbnail_path = os.path.join(output_thumbnail_dir, f"id_{tracking_id}.jpg")
                         cv2.imwrite(thumbnail_path, thumbnail)
                         saved_tracking_ids.add(tracking_id)
 
-            frame_number += 1
+        frame_number += 1
 
-        cap.release()
+    cap.release()
 
-        # Save metadata to Parquet file
-        if all_detections:
-            df = pd.DataFrame(all_detections)
-            df.to_parquet(output_metadata_path)
-            print(f"Metadata saved to {output_metadata_path}")
+    if all_detections:
+        df = pd.DataFrame(all_detections)
+        df.to_parquet(output_metadata_path)
+        print(f"Metadata saved to {output_metadata_path}")
 
     print("Video processing complete.")
 
