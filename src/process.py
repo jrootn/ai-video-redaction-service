@@ -4,6 +4,7 @@ import mediapipe as mp
 import numpy as np
 import json
 import pandas as pd
+import hashlib
 
 def process_video():
     """
@@ -23,18 +24,21 @@ def process_video():
     # Ensure output directory for thumbnails exists
     os.makedirs(output_thumbnail_dir, exist_ok=True)
 
-    # Initialize MediaPipe FaceDetector
+    # Initialize MediaPipe FaceLandmarker
     BaseOptions = mp.tasks.BaseOptions
-    FaceDetector = mp.tasks.vision.FaceDetector
-    FaceDetectorOptions = mp.tasks.vision.FaceDetectorOptions
+    FaceLandmarker = mp.tasks.vision.FaceLandmarker
+    FaceLandmarkerOptions = mp.tasks.vision.FaceLandmarkerOptions
     VisionRunningMode = mp.tasks.vision.RunningMode
 
-    options = FaceDetectorOptions(
-        base_options=BaseOptions(model_asset_path='models/blaze_face_short_range.tflite'),
-        running_mode=VisionRunningMode.VIDEO
+    options = FaceLandmarkerOptions(
+        base_options=BaseOptions(model_asset_path='models/face_landmarker.task'),
+        running_mode=VisionRunningMode.VIDEO,
+        output_face_blendshapes=True,
+        output_facial_transformation_matrixes=True,
+        num_faces=10,
     )
 
-    with FaceDetector.create_from_options(options) as detector:
+    with FaceLandmarker.create_from_options(options) as landmarker:
         # Open the video file
         cap = cv2.VideoCapture(input_video_path)
         if not cap.isOpened():
@@ -58,40 +62,40 @@ def process_video():
             rgb_frame = cv2.cvtColor(resized_frame, cv2.COLOR_BGR2RGB)
             mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
 
-            # Perform face detection on the resized frame
-            face_detector_result = detector.detect_for_video(mp_image, frame_number)
+            # Perform face landmarking on the resized frame
+            face_landmarker_result = landmarker.detect_for_video(mp_image, frame_number)
 
-            if face_detector_result.detections:
-                for detection in face_detector_result.detections:
-                    bbox = detection.bounding_box
-                    
+            if face_landmarker_result.face_landmarks:
+                for face_landmarks in face_landmarker_result.face_landmarks:
+                    # This is a simplified bounding box calculation
+                    x_min = min([lm.x for lm in face_landmarks])
+                    y_min = min([lm.y for lm in face_landmarks])
+                    x_max = max([lm.x for lm in face_landmarks])
+                    y_max = max([lm.y for lm in face_landmarks])
+
                     # Scale bounding box back to original frame size
-                    scaled_x_min = int(bbox.origin_x * original_width / 1280)
-                    scaled_y_min = int(bbox.origin_y * original_height / 720)
-                    scaled_x_max = int((bbox.origin_x + bbox.width) * original_width / 1280)
-                    scaled_y_max = int((bbox.origin_y + bbox.height) * original_height / 720)
+                    scaled_x_min = int(x_min * original_width)
+                    scaled_y_min = int(y_min * original_height)
+                    scaled_x_max = int(x_max * original_width)
+                    scaled_y_max = int(y_max * original_height)
 
-                    # Get the tracking ID
-                    if detection.categories:
-                        tracking_id = detection.categories[0].index
-                    else:
-                        print(f"Warning: No categories found for detection in frame {frame_number}")
-                        print(detection)
-                        tracking_id = None
+                    # Create a simple hash of the landmarks to serve as a tracking ID
+                    landmarks_str = "".join([f"{lm.x}{lm.y}{lm.z}" for lm in face_landmarks])
+                    tracking_id = hashlib.sha256(landmarks_str.encode()).hexdigest()[:8]
 
-                    if tracking_id is not None:
-                        all_detections.append({
-                            "frame_number": frame_number,
-                            "tracking_id": tracking_id,
-                            "bbox": [scaled_x_min, scaled_y_min, scaled_x_max, scaled_y_max]
-                        })
 
-                        # Save thumbnail for new tracking IDs
-                        if tracking_id not in saved_tracking_ids:
-                            thumbnail = frame[scaled_y_min:scaled_y_max, scaled_x_min:scaled_x_max]
-                            thumbnail_path = os.path.join(output_thumbnail_dir, f"id_{tracking_id}.jpg")
-                            cv2.imwrite(thumbnail_path, thumbnail)
-                            saved_tracking_ids.add(tracking_id)
+                    all_detections.append({
+                        "frame_number": frame_number,
+                        "tracking_id": tracking_id,
+                        "bbox": [scaled_x_min, scaled_y_min, scaled_x_max, scaled_y_max]
+                    })
+
+                    # Save thumbnail for new tracking IDs
+                    if tracking_id not in saved_tracking_ids:
+                        thumbnail = frame[scaled_y_min:scaled_y_max, scaled_x_min:scaled_x_max]
+                        thumbnail_path = os.path.join(output_thumbnail_dir, f"id_{tracking_id}.jpg")
+                        cv2.imwrite(thumbnail_path, thumbnail)
+                        saved_tracking_ids.add(tracking_id)
 
             frame_number += 1
 
