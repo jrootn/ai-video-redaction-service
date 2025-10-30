@@ -27,8 +27,8 @@ The following images from the test video demonstrate the limitations of this mod
 **Image: `frame_0263.jpg`**
 ![Example of a false positive detection](docs/images/frame_0263.jpg)
 
-**Image: `frame_0200.jpg`**
-![Example of a false positive detection](docs/images/frame_0200.jpg)
+**Image: `frame_0085.jpg`**
+![Example of a false positive detection](docs/images/frame_0085.jpg)
 
 ## Running Locally
 
