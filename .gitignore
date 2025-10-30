@@ -84,12 +84,8 @@ ipython_config.py
 # pyenv
 .python-version
 
-# PEP 582; __pypackages__
-__pypackages__/
-
-# Celery stuff
+# celery beat schedule file
 celerybeat-schedule
-celerybeat.pid
 
 # SageMath parsed files
 *.sage.py
@@ -100,12 +96,12 @@ celerybeat.pid
 env/
 venv/
 ENV/
-env.bak
-venv.bak
+env.bak/
+venv.bak/
 
 # Spyder project settings
 .spyderproject
-.spyproject
+.spyderworkspace
 
 # Rope project settings
 .ropeproject
@@ -121,11 +117,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# pytype static analyzer
-.pytype/
-
-# Cython debug symbols
-cython_debug/
-
-# Data files
-data/
+# output
+/output
+output/
