@@ -40,6 +40,7 @@ This will process the sample video in the `tests` directory and output the follo
 
 *   `metadata.json`: A Parquet file containing the structured metadata for all detected faces.
 *   `thumbnails/`: A directory containing a thumbnail image for each unique face detected.
+*   `video_with_detections.mp4`: A video with the detected faces highlighted with bounding boxes.
 
 ## Project Structure
 

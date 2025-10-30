@@ -8,3 +8,6 @@ mkdir -p ./output/thumbnails/
 
 # Run the worker
 python3 src/process.py
+
+# Run the visualization
+python3 src/visualize.py
