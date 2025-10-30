@@ -25,10 +25,10 @@ This can result in both missed faces (false negatives) and incorrect detections 
 The following images from the test video demonstrate the limitations of this model. Notice the incorrect detection of a neck/chin as a separate face.
 
 **Image: `frame_0263.jpg`**
-![Example of a false positive detection](output/frames_low_confidence/frame_0263.jpg)
+![Example of a false positive detection](docs/images/frame_0263.jpg)
 
 **Image: `frame_0200.jpg`**
-![Example of a false positive detection](output/frames_low_confidence/frame_0200.jpg)
+![Example of a false positive detection](docs/images/frame_0200.jpg)
 
 ## Running Locally
 
