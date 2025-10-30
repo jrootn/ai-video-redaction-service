@@ -29,6 +29,15 @@ This will process the sample video in the `tests` directory and output the follo
 
 You can adjust the sensitivity of the detector by editing the `MIN_DETECTION_CONFIDENCE` environment variable in the `run_local.sh` script.
 
+## License
+
+This project is licensed under the GPL-3.0 License. See the [LICENSE](LICENSE) file for details.
+
+## References
+
+*   **YOLO-Face Repository:** [https://github.com/YapaLab/yolo-face](https://github.com/YapaLab/yolo-face)
+*   **Pre-trained Models:** The models used in this project were trained on the WIDERFace dataset and are provided by the YOLO-Face repository.
+
 ## Project Structure
 
 ```
