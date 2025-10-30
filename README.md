@@ -1,34 +1,12 @@
-# AI Video Redaction Service (MediaPipe Detector Branch)
+# AI Video Redaction Service (YOLO-Face Detector)
 
-This branch contains a version of the `detector-service` that uses the **MediaPipe Face Detector**. This component is a stateless, container-ready Python application designed to perform face detection on video files and output structured metadata.
-
-**Note:** This implementation has known limitations and is preserved for archival and comparison purposes. For a more accurate and robust solution, please refer to the main branch, which will feature a YOLO-based detector.
+This service uses the **YOLO-Face** model for accurate and efficient face detection in videos. It's a container-ready Python application that processes video files, detects faces, and outputs structured metadata.
 
 ## How it Works
 
-The application processes a video file frame by frame, using the MediaPipe `FaceDetector` to identify faces. For each detected face, it records the frame number, a unique tracking ID, and the bounding box coordinates.
+The application processes a video file frame by frame, using a pre-trained YOLO-Face model to identify faces. For each detected face, it records the frame number, a unique tracking ID, and the bounding box coordinates.
 
-To improve the detection of small faces, this implementation uses a **tiling strategy**. Each frame is broken down into smaller, overlapping tiles, and detection is run on each tile. The results are then merged using Non-Maximum Suppression.
-
-## Known Limitations
-
-The MediaPipe Face Detector, even with the tiling strategy, has significant limitations in detecting faces that are:
-
-*   **Small or distant** from the camera.
-*   **Partially occluded** (e.g., covered by a hand or object).
-*   **In poor lighting** or unusual angles.
-
-This can result in both missed faces (false negatives) and incorrect detections of other objects as faces (false positives).
-
-### Examples of Poor Detection
-
-The following images from the test video demonstrate the limitations of this model. Notice the incorrect detection of a neck/chin as a separate face.
-
-**Image: `frame_0263.jpg`**
-![Example of a false positive detection](docs/images/frame_0263.jpg)
-
-**Image: `frame_0085.jpg`**
-![Example of a false positive detection](docs/images/frame_0085.jpg)
+This implementation includes several YOLOv12 models (`yolov12n-face.pt`, `yolov12s-face.pt`, `yolov12m-face.pt`, and `yolov12l-face.pt`) in the `models` directory. You can easily switch between these models by editing the `src/blur_app/detection.py` file to test their performance.
 
 ## Running Locally
 

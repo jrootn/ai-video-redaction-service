@@ -1,4 +1,6 @@
-mediapipe
+ultralytics
+torch
+torchvision
 opencv-python-headless
 pandas
 pyarrow
