@@ -13,12 +13,12 @@ def main():
 
     print("Starting the blurring application...")
 
-    # 1. Detect and track objects
+    # 1. Detect objects
     detected_boxes = detection.detect_objects(image)
-    print(f"Detected {len(detected_boxes)} objects, now tracking.")
+    print(f"Detected {len(detected_boxes)} objects.")
 
     # 2. Track objects
-    tracked_objects = tracking.track_objects(detected_boxes)
+    tracked_objects = tracking.track_objects(image, detected_boxes)
     print(f"Tracking {len(tracked_objects)} objects.")
 
     # 3. Blur objects
