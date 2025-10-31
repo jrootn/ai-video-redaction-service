@@ -11,24 +11,23 @@ model = YOLO("models/yolov12n-face.pt")
 
 def detect_objects(image: np.ndarray) -> list:
     """
-    Detects faces in an image using YOLOv12 Face Detection.
+    Detects and tracks faces in an image using YOLOv12 Face Detection and ByteTrack.
 
     Args:
         image: The input image as a NumPy array.
 
     Returns:
         A list of bounding boxes for the detected faces.
-        Format: [x_min, y_min, x_max, y_max, confidence, class_id]
+        Format: [x_min, y_min, x_max, y_max, track_id]
     """
-    # Run detection
-    results = model(image, conf=min_confidence)
+    # Run tracking
+    results = model.track(image, conf=min_confidence, tracker="bytetrack.yaml", persist=True)
 
-    detected_boxes = []
-    for result in results:
-        for box in result.boxes:
+    tracked_boxes = []
+    if results[0].boxes.id is not None:
+        for box in results[0].boxes:
             x_min, y_min, x_max, y_max = map(int, box.xyxy[0])
-            confidence = float(box.conf[0])
-            class_id = int(box.cls[0])
-            detected_boxes.append([x_min, y_min, x_max, y_max, confidence, class_id])
+            track_id = int(box.id[0])
+            tracked_boxes.append([x_min, y_min, x_max, y_max, track_id])
 
-    return detected_boxes
+    return tracked_boxes
