@@ -17,6 +17,7 @@ export MIN_DETECTION_CONFIDENCE="0.5"
 INPUT_VIDEO_PATH="tests/sample_video.mp4" \
 OUTPUT_METADATA_PATH="output/metadata.parquet" \
 OUTPUT_THUMBNAIL_DIR="output/thumbnails" \
+OUTPUT_VIDEO_PATH="output/output.mp4" \
 python3 src/process.py
 
 echo "Local processing complete."

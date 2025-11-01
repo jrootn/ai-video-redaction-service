@@ -6,3 +6,5 @@ pandas
 pyarrow
 Pillow
 boxmot
+onnxruntime
+Flask

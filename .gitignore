@@ -118,6 +118,9 @@ dmypy.json
 .pyre/
 
 # output
-/output
+/output/
 output/
 *.mp4
+
+# test scripts
+test_models.py

@@ -1,12 +1,8 @@
 import numpy as np
-from boxmot import DeepOCSORT
+from boxmot import ByteTrack
 
 # Initialize the tracker
-tracker = DeepOCSORT(
-    model_weights='osnet_x0_25_msmt17.pt',
-    device='cpu',
-    fp16=False,
-)
+tracker = ByteTrack()
 
 def track_objects(image: np.ndarray, detected_boxes: list) -> list:
     """
