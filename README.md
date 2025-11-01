@@ -1,52 +1,130 @@
-# AI Video Redaction Service (YOLO-Face Detector)
+# AI Video Redaction Service
 
-This service uses the **YOLO-Face** model for accurate and efficient face detection in videos. It's a container-ready Python application that processes video files, detects faces, and outputs structured metadata.
+This project is an AI-powered video redaction service that automatically detects and anonymizes faces in videos. It provides a flexible and extensible pipeline for video processing, face detection, tracking, and anonymization.
 
-## How it Works
+## Table of Contents
 
-The application processes a video file frame by frame, using a pre-trained YOLO-Face model to identify faces. For each detected face, it records the frame number, a unique tracking ID, and the bounding box coordinates.
+- [Features](#features)
+- [Architecture](#architecture)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+- [Usage](#usage)
+  - [Running the API](#running-the-api)
+  - [API Endpoints](#api-endpoints)
+- [Testing](#testing)
+- [Future Work](#future-work)
 
-This implementation includes several YOLOv12 models (`yolov12n-face.pt`, `yolov12s-face.pt`, `yolov12m-face.pt`, and `yolov12l-face.pt`) in the `models` directory. You can easily switch between these models by editing the `src/blur_app/detection.py` file to test their performance.
+## Features
 
-## Running Locally
+- **Video Processing**: Handles various video formats and extracts metadata.
+- **Face Detection and Tracking**: Accurately detects and tracks faces throughout a video.
+- **Extensible Anonymization**: Supports multiple anonymization strategies, starting with simple blurring. New strategies like AI avatars can be easily added.
+- **Face Selection API**: Allows users to select which faces to anonymize through a simple REST API.
 
-To run the `detector-service` locally, follow these steps:
+## Architecture
 
-1.  **Install Dependencies:**
-    ```bash
-    pip install -r requirements.txt
-    ```
+The project is structured into the following modules:
 
-2.  **Run the Service:**
-    ```bash
-    bash run_local.sh
-    ```
+- `src/api`: Contains the Flask application for the face selection API.
+- `src/anonymization`: Implements the anonymization strategies (e.g., blurring).
+- `src/core`: The core application logic, including detection, tracking, and the main processing pipeline.
+- `src/video_processing`: Handles video input and frame extraction.
+- `tests`: Contains unit tests for the different modules.
 
-This will process the sample video in the `tests` directory and output the following to the `output` directory:
+## Getting Started
 
-*   `metadata.parquet`: A Parquet file containing the structured metadata for all detected faces.
-*   `thumbnails/`: A directory containing a thumbnail image for each unique face detected.
+### Prerequisites
 
-You can adjust the sensitivity of the detector by editing the `MIN_DETECTION_CONFIDENCE` environment variable in the `run_local.sh` script.
+- Python 3.8+
+- `pip` and `virtualenv`
 
-## License
+### Installation
 
-This project is licensed under the GPL-3.0 License. See the [LICENSE](LICENSE) file for details.
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/jrootn/ai-video-redaction-service.git
+   cd ai-video-redaction-service
+   ```
 
-## References
+2. **Create and activate a virtual environment:**
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   ```
 
-*   **YOLO-Face Repository:** [https://github.com/YapaLab/yolo-face](https://github.com/YapaLab/yolo-face)
-*   **Pre-trained Models:** The models used in this project were trained on the WIDERFace dataset and are provided by the YOLO-Face repository.
+3. **Install the dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-## Project Structure
+## Usage
 
+### Running the API
+
+To start the face selection API, run the following command:
+
+```bash
+./run_api.sh
 ```
-.
-├── Dockerfile
-├── README.md
-├── requirements.txt
-├── run_local.sh
-├── src
-│   └── process.py
-└── tests
-    └── sample_video.mp4
+
+The API will be available at `http://127.0.0.1:5000`.
+
+### API Endpoints
+
+#### 1. Process Video and Get Unique Faces
+
+- **URL**: `/process_video`
+- **Method**: `POST`
+- **Form Data**:
+  - `video`: The video file to process.
+- **Success Response**:
+  - **Code**: 200
+  - **Content**:
+    ```json
+    {
+      "unique_faces": {
+        "1": "base64_encoded_image",
+        "2": "base64_encoded_image"
+      }
+    }
+    ```
+
+#### 2. Blur Selected Faces
+
+- **URL**: `/blur_faces`
+- **Method**: `POST`
+- **Form Data**:
+  - `video`: The video file to process.
+- **JSON Payload**:
+  ```json
+  {
+    "faces_to_blur": [1, 2]
+  }
+  ```
+- **Success Response**:
+  - **Code**: 200
+  - **Content**:
+    ```json
+    {
+      "message": "Video processed successfully",
+      "output_path": "output/blurred_video.mp4"
+    }
+    ```
+
+## Testing
+
+To run the unit tests, use the following command:
+
+```bash
+./run_tests.sh
+```
+
+## Future Work
+
+- **Add more anonymization strategies**:
+  - AI-generated avatars
+  - Gender-aware avatars
+- **Improve face detection and tracking accuracy.**
+- **Add a web interface for easier user interaction.**
+- **Deploy the service using Docker and Kubernetes.**
